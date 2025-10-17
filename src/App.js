@@ -1,8 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { colorClasses } from "./colorClasses.js";
+import { webAppUrl, apiKey } from "./sensitiveData.js";
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   let events = initialEvents;
+  const [refreshFlag, setRefreshFlag] = useState(false);
+
+  useEffect(() => {
+    const _intervalId = setInterval(() => {
+      setRefreshFlag(!refreshFlag);
+      console.log("refreshing");
+    }, 120000);
+
+    return () => clearInterval(_intervalId);
+  }, []);
   console.log(events);
   if (!Array.isArray(events)) {
     console.warn("events is not an array, using empty array");
@@ -177,6 +188,13 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           {/* Calendar days */}
           {renderCalendar()}
         </div>
+      </div>
+      <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+        <useCheckForUpdates
+          refreshFlag={refreshFlag}
+          webAppUrl={webAppUrl}
+          apiKey={apiKey}
+        />
       </div>
     </div>
   );
