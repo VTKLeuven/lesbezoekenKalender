@@ -10,6 +10,7 @@ export async function callWebApp(webAppUrl, apiKey) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
+    console.log(data);
     const meets = [];
     const organisationsColorMap = new Map();
     let globalFullColorFlag = false;
@@ -48,8 +49,3 @@ export async function callWebApp(webAppUrl, apiKey) {
     console.error("Error: ", error.message);
   }
 }
-
-callWebApp(
-  "https://script.google.com/macros/s/AKfycbwWY-1mOpJYPD_VttGY3EV31KPTTXoRUnDX58U-KCJI8GBN4OZ9LQAPosfkULjnqWoG/exec",
-  "9d791309-2aad-452f-a771-262fbcd020a6"
-);
