@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { colorClasses } from "./colorClasses.js";
 import { webAppUrl, apiKey } from "./sensitiveData.js";
+import { UseCheckForUpdates } from "./hooks.js";
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   let events = initialEvents;
   const [refreshFlag, setRefreshFlag] = useState(false);
@@ -190,7 +191,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
         </div>
       </div>
       <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
-        <useCheckForUpdates
+        <UseCheckForUpdates
           refreshFlag={refreshFlag}
           webAppUrl={webAppUrl}
           apiKey={apiKey}
