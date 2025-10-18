@@ -4,9 +4,10 @@ import { colorClasses } from "./colorClasses.js";
 import { webAppUrl, apiKey } from "./sensitiveData.js";
 import { UseCheckForUpdates } from "./hooks.js";
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
-  let events = initialEvents;
+  const startEvents = initialEvents;
+  let [events, setEvents] = useState(startEvents);
   const [refreshFlag, setRefreshFlag] = useState(false);
-
+  console.log(events);
   useEffect(() => {
     const _intervalId = setInterval(() => {
       setRefreshFlag(!refreshFlag);
@@ -20,7 +21,9 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     console.warn("events is not an array, using empty array");
     events = [];
   }
-
+  function handleNewEvents(newEvents) {
+    setEvents(newEvents);
+  }
   const [currentDate, setCurrentDate] = useState(new Date());
   const months = [
     "January",
@@ -195,6 +198,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           refreshFlag={refreshFlag}
           webAppUrl={webAppUrl}
           apiKey={apiKey}
+          updateFunc={handleNewEvents}
         />
       </div>
     </div>

@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { callWebApp } from "./fetch-main";
 
-export function UseCheckForUpdates({ webAppUrl, apiKey, refreshFlag }) {
+export function UseCheckForUpdates({
+  webAppUrl,
+  apiKey,
+  refreshFlag,
+  updateFunc,
+}) {
   const [lastModified, setLastModified] = useState(0);
   useEffect(() => {
     const checkLastModified = async () => {
@@ -11,10 +17,12 @@ export function UseCheckForUpdates({ webAppUrl, apiKey, refreshFlag }) {
         if (sheetLastModified.lastModified > lastModified) {
           console.log("Sheet has been updated!");
           setLastModified(sheetLastModified.lastModified);
-          return true;
+          const [newEvents, _map] = await callWebApp(webAppUrl, apiKey);
+          updateFunc(newEvents);
+          return;
         } else if (sheetLastModified.lastModified === lastModified) {
           console.log("No updates detected.");
-          return false;
+          return;
         } else {
           throw new Error("SheetLastModified should not take this value");
         }
@@ -25,5 +33,5 @@ export function UseCheckForUpdates({ webAppUrl, apiKey, refreshFlag }) {
 
     checkLastModified();
     // Eslint deed hier moeilijk, alleen refreshFlag zou moeten veranderen.
-  }, [lastModified, webAppUrl, apiKey, refreshFlag]);
+  }, [lastModified, webAppUrl, apiKey, refreshFlag, updateFunc]);
 }
