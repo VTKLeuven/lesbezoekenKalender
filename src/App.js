@@ -7,6 +7,19 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const startEvents = initialEvents;
   let [events, setEvents] = useState(startEvents);
   const [refreshFlag, setRefreshFlag] = useState(false);
+  const [view, setView] = useState("month");
+
+  const nextPeriod = () => {
+    if (view === "month") nextMonth();
+    else if (view === "week") nextWeek();
+    else nextDay();
+  };
+
+  const prevPeriod = () => {
+    if (view === "month") prevMonth();
+    else if (view === "week") prevWeek();
+    else prevDay();
+  };
   console.log(events);
   useEffect(() => {
     const _intervalId = setInterval(() => {
@@ -59,6 +72,28 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
       new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
     );
   };
+  const prevWeek = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getWeek() - 1)
+    );
+  };
+
+  const nextWeek = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getWeek() + 1)
+    );
+  };
+  const prevDay = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getDay() - 1)
+    );
+  };
+
+  const nextDay = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getDay() + 1)
+    );
+  };
 
   const getEventsForDay = (day) => {
     return events
@@ -82,10 +117,24 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     );
   };
 
-  const renderCalendar = () => {
+  const renderCalendar = (view) => {
     const days = [];
-    const totalDays = daysInMonth(currentDate);
-    const firstDay = firstDayOfMonth(currentDate);
+    let totalDays = 0;
+    let firstDay = 0;
+    switch (view) {
+      case "month":
+        totalDays = daysInMonth(currentDate);
+        firstDay = firstDayOfMonth(currentDate);
+        break;
+      case "week":
+        totalDays = 7;
+        break;
+      case "day":
+        totalDays = 1;
+        break;
+      default:
+        throw new Error("Unknown view option");
+    }
 
     // Empty cells before the first day of the month
     for (let i = 0; i < firstDay; i++) {
@@ -154,45 +203,78 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+          {/* Title and navigation */}
           <div className="flex items-center gap-3">
             <Calendar className="w-8 h-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-800">
               {months[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h1>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={prevMonth}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={nextMonth}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
+
+          {/* Navigation + View toggle */}
+          <div className="flex items-center gap-3">
+            {/* Prev / Next */}
+            <div className="flex gap-2">
+              <button
+                onClick={prevPeriod}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={nextPeriod}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* View selector */}
+            <div className="flex gap-2 ml-4 bg-gray-100 rounded-lg p-1">
+              {["Month", "Week", "Day"].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v.toLowerCase())}
+                  className={`px-3 py-1 rounded-md font-medium text-sm transition-colors ${
+                    view === v.toLowerCase()
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-700 hover:bg-white"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-lg overflow-hidden">
-          {/* Weekday headers */}
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div
-              key={day}
-              className="bg-gray-100 p-3 text-center font-semibold text-gray-700 border-b-2 border-gray-300"
-            >
-              {day}
-            </div>
-          ))}
+        <div
+          className={`
+          border border-gray-200 rounded-lg overflow-hidden
+          ${view === "month" ? "grid grid-cols-7 gap-0" : ""}
+          ${view === "week" ? "grid grid-cols-7" : ""}
+          ${view === "day" ? "grid grid-cols-1" : ""}
+        `}
+        >
+          {/* Weekday headers only for month/week views */}
+          {(view === "month" || view === "week") &&
+            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div
+                key={day}
+                className="bg-gray-100 p-3 text-center font-semibold text-gray-700 border-b-2 border-gray-300"
+              >
+                {day}
+              </div>
+            ))}
 
-          {/* Calendar days */}
-          {renderCalendar()}
+          {/* Calendar days (dynamic) */}
+          {renderCalendar(view)}
         </div>
       </div>
+
+      {/* Updates */}
       <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
         <UseCheckForUpdates
           refreshFlag={refreshFlag}
