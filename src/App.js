@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { colorClasses } from "./colorClasses.js";
 import { webAppUrl, apiKey } from "./sensitiveData.js";
 import { UseCheckForUpdates } from "./hooks.js";
+import { getWeekStartMonday } from "./helper.js";
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const startEvents = initialEvents;
   let [events, setEvents] = useState(startEvents);
@@ -58,7 +59,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   };
 
   const firstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDate();
   };
 
   const prevMonth = () => {
@@ -74,24 +75,40 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   };
   const prevWeek = () => {
     setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getWeek() - 1)
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate() - 7
+      )
     );
   };
 
   const nextWeek = () => {
     setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getWeek() + 1)
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate() + 7
+      )
     );
   };
   const prevDay = () => {
     setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getDay() - 1)
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate() - 1
+      )
     );
   };
 
   const nextDay = () => {
     setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getDay() + 1)
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate() + 1
+      )
     );
   };
 
@@ -121,30 +138,37 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     const days = [];
     let totalDays = 0;
     let firstDay = 0;
+    console.log(view);
     switch (view) {
       case "month":
         totalDays = daysInMonth(currentDate);
         firstDay = firstDayOfMonth(currentDate);
+        for (let i = 0; i < firstDay; i++) {
+          days.push(
+            <div
+              key={`empty-${i}`}
+              className="border p-2 h-24 bg-gray-50"
+            ></div>
+          );
+        }
         break;
       case "week":
         totalDays = 7;
+        firstDay = getWeekStartMonday(currentDate).getDate();
         break;
       case "day":
         totalDays = 1;
+        firstDay = currentDate.getDate();
         break;
       default:
         throw new Error("Unknown view option");
     }
 
     // Empty cells before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(
-        <div key={`empty-${i}`} className="border p-2 h-24 bg-gray-50"></div>
-      );
-    }
+    console.log(firstDay);
 
     // Days of the month
-    for (let day = 1; day <= totalDays; day++) {
+    for (let day = firstDay; day <= firstDay + totalDays - 1; day++) {
       const dayEvents = getEventsForDay(day);
       const today = isToday(day);
 
