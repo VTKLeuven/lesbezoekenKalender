@@ -59,7 +59,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   };
 
   const firstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDate();
+    return new Date(date.getFullYear(), date.getMonth(), 1);
   };
 
   const prevMonth = () => {
@@ -137,13 +137,13 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const renderCalendar = (view) => {
     const days = [];
     let totalDays = 0;
-    let firstDay = 0;
+    let firstDay = new Date();
     console.log(view);
     switch (view) {
       case "month":
         totalDays = daysInMonth(currentDate);
         firstDay = firstDayOfMonth(currentDate);
-        for (let i = 0; i < firstDay; i++) {
+        for (let i = 0; i < firstDay.getDate(); i++) {
           days.push(
             <div
               key={`empty-${i}`}
@@ -154,11 +154,11 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
         break;
       case "week":
         totalDays = 7;
-        firstDay = getWeekStartMonday(currentDate).getDate();
+        firstDay = getWeekStartMonday(currentDate);
         break;
       case "day":
         totalDays = 1;
-        firstDay = currentDate.getDate();
+        firstDay = currentDate;
         break;
       default:
         throw new Error("Unknown view option");
@@ -166,9 +166,10 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
 
     // Empty cells before the first day of the month
     console.log(firstDay);
-
+    let currentDay = currentDate;
     // Days of the month
-    for (let day = firstDay; day <= firstDay + totalDays - 1; day++) {
+    for (let index = 0; index <= totalDays - 1; index++) {
+      const day = currentDay.getDate();
       const dayEvents = getEventsForDay(day);
       const today = isToday(day);
 
@@ -217,6 +218,11 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
             })}
           </div>
         </div>
+      );
+      currentDay = new Date(
+        currentDay.getFullYear(),
+        currentDay.getMonth(),
+        currentDay.getDate() + 1
       );
     }
 
