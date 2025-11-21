@@ -6,3 +6,21 @@ export function getWeekStartMonday(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+
+export function fulfillsFilter(filter,meet) {
+    if (filter.field === '') {
+      return true
+    }
+    const field = filter.field
+    const meetValue = meet[field]
+    if (meetValue === '') {
+      throw new Error('Meet does not have this field')
+    }
+    if (filter.value === meetValue) {
+      return true
+    }
+    else {
+      return false
+    }
+}

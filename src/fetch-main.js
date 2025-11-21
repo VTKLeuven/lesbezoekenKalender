@@ -16,6 +16,7 @@ export async function callWebApp(webAppUrl, apiKey) {
     let globalFullColorFlag = false;
     for (const obj of data) {
       const newMeet = new Meet(new Date(obj.Timestamp), obj.Organisatie);
+      newMeet.host = obj.Organisatie
       if (organisationsColorMap.has(obj.Organisatie)) {
         newMeet.color = organisationsColorMap.get(obj.Organisatie);
       } else {

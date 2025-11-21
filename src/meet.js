@@ -1,5 +1,5 @@
 class Meet {
-  constructor(date, title, color = "blue") {
+  constructor(date, title, color = "blue", host = null) {
     // Validate and set date
     if (date instanceof Date) {
       this.date = date;
@@ -16,6 +16,7 @@ class Meet {
 
     this.title = title;
     this.color = color;
+    this.host = host
   }
 }
 export { Meet };

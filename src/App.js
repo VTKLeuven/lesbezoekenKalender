@@ -4,9 +4,12 @@ import { colorClasses } from "./colorClasses.js";
 import { webAppUrl, apiKey } from "./sensitiveData.js";
 import { UseCheckForUpdates } from "./hooks.js";
 import { getWeekStartMonday } from "./helper.js";
+import { fulfillsFilter } from "./helper.js";
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const startEvents = initialEvents;
   let [events, setEvents] = useState(startEvents);
+  let [filter, setFilter] = useState({field:'',value:''})
+  let [displayFilter,setDisplayFilter] = useState({field:'',value:''})
   const [refreshFlag, setRefreshFlag] = useState(false);
   const [view, setView] = useState("month");
 
@@ -21,7 +24,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     else if (view === "week") prevWeek();
     else prevDay();
   };
-  console.log(events);
   useEffect(() => {
     const _intervalId = setInterval(() => {
       setRefreshFlag(!refreshFlag);
@@ -30,7 +32,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
 
     return () => clearInterval(_intervalId);
   }, []);
-  console.log(events);
   if (!Array.isArray(events)) {
     console.warn("events is not an array, using empty array");
     events = [];
@@ -112,14 +113,15 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     );
   };
 
-  const getEventsForDay = (day) => {
+  const getEventsForDay = (day,filter=null) => {
     return events
       .filter((event) => {
         const eventDate = new Date(event.date);
         return (
           eventDate.getDate() === day &&
           eventDate.getMonth() === currentDate.getMonth() &&
-          eventDate.getFullYear() === currentDate.getFullYear()
+          eventDate.getFullYear() === currentDate.getFullYear() &&
+          (filter === null || fulfillsFilter(filter,event) === true)
         );
       })
       .sort((a, b) => a.date - b.date);
@@ -138,7 +140,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     const days = [];
     let totalDays = 0;
     let firstDay = new Date();
-    console.log(view);
     switch (view) {
       case "month":
         totalDays = daysInMonth(currentDate);
@@ -164,13 +165,12 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
         throw new Error("Unknown view option");
     }
 
-    // Empty cells before the first day of the month
-    console.log(firstDay);
     let currentDay = currentDate;
     // Days of the month
     for (let index = 0; index <= totalDays - 1; index++) {
       const day = currentDay.getDate();
-      const dayEvents = getEventsForDay(day);
+      const dayEvents = getEventsForDay(day,filter);
+      console.log(dayEvents)
       const today = isToday(day);
 
       days.push(
@@ -194,9 +194,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
             {dayEvents.map((event, idx) => {
               const colors =
                 organisationCM.get(event.title) || colorClasses.blue;
-              console.log(organisationCM.get(event.title));
-              console.log(colorClasses.blue);
-              console.log(colors);
               return (
                 <div
                   key={idx}
@@ -228,7 +225,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
 
     return days;
   };
-
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -279,6 +275,33 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           </div>
         </div>
 
+        {/* Filter Bar */}
+        <div className="mb-4 flex gap-3 items-center">
+          <input
+            type="text"
+            placeholder="Field"
+            value={displayFilter.field}
+            onChange={(e) => setDisplayFilter({field:e.target.value,value: displayFilter.value})}
+            className="border border-gray-300 p-2 rounded-lg flex-grow"
+          />
+          <input
+            type="text"
+            placeholder="Value"
+            value= {displayFilter.value}
+            onChange={(e) => setDisplayFilter({field:displayFilter.field,value: e.target.value})}
+            className="border border-gray-300 p-2 rounded-lg flex-grow"
+          />
+          <button
+            onClick={() => {
+              setFilter({ field: displayFilter.field, value: displayFilter.value });
+              renderCalendar(view);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Filter
+          </button>
+        </div>
+
         {/* Calendar grid */}
         <div
           className={`
@@ -288,7 +311,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           ${view === "day" ? "grid grid-cols-1" : ""}
         `}
         >
-          {/* Weekday headers only for month/week views */}
           {(view === "month" || view === "week") &&
             ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div
@@ -299,8 +321,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
               </div>
             ))}
 
-          {/* Calendar days (dynamic) */}
-          {renderCalendar(view)}
+          {renderCalendar(view, filter)}
         </div>
       </div>
 
@@ -315,6 +336,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
       </div>
     </div>
   );
-};
+}
 
 export default App;
