@@ -19,4 +19,6 @@ class Meet {
     this.host = host
   }
 }
-export { Meet };
+
+const possibleFields = ['host', 'title'];
+export { Meet, possibleFields };

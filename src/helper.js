@@ -13,14 +13,8 @@ export function fulfillsFilter(filter,meet) {
       return true
     }
     const field = filter.field
-    const meetValue = meet[field]
-    if (meetValue === '') {
-      throw new Error('Meet does not have this field')
-    }
-    if (filter.value === meetValue) {
-      return true
-    }
-    else {
-      return false
-    }
+    const meetValue = meet[field];
+    if (meetValue === undefined) return false;
+    if (filter.value === '') return true;
+    return filter.value === meetValue;
 }

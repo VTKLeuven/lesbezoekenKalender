@@ -1,70 +1,68 @@
-# Getting Started with Create React App
+# Lesbezoeken Calendar
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React calendar app for tracking school/class visits (*lesbezoeken*). Events are fetched from a Google Apps Script web app and displayed in month, week, or day view. Each organisation is automatically assigned a colour. Events auto-refresh every 2 minutes and can be filtered by field value.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Prerequisites
 
-### `npm start`
+- [Node.js](https://nodejs.org/) (v18 or later recommended)
+- npm (comes with Node)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Setup
 
-### `npm test`
+### 1. Install dependencies
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm install
+```
 
-### `npm run build`
+### 2. Create `src/sensitiveData.js`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+This file is not committed. Create it manually:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```js
+// src/sensitiveData.js
+export const webAppUrl = "https://script.google.com/macros/s/<your-deployment-id>/exec";
+export const apiKey = "<your-api-key>";
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Both values come from your Google Apps Script deployment.
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Running the app
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Opens at [http://localhost:3000](http://localhost:3000). The page reloads on file changes.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Running tests
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm test
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Launches Jest in interactive watch mode via `react-scripts test`.
 
-### Code Splitting
+> **Note:** `src/App.test.js` is the Create React App placeholder and will currently fail — it looks for text that does not exist in this app. Replace it with tests specific to this project before running in CI.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The testing stack is:
+- [Jest](https://jestjs.io/) (via `react-scripts`)
+- [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/)
+- [@testing-library/jest-dom](https://github.com/testing-library/jest-dom) — custom DOM matchers (configured in `src/setupTests.js`)
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Other scripts
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+| Command | Description |
+|---|---|
+| `npm run build` | Production build to `build/` |
+| `npm run eject` | Eject from Create React App (irreversible) |

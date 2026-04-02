@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { colorClasses } from "./colorClasses.js";
 import { webAppUrl, apiKey } from "./sensitiveData.js";
 import { UseCheckForUpdates } from "./hooks.js";
-import { getWeekStartMonday } from "./helper.js";
-import { fulfillsFilter } from "./helper.js";
+import { getWeekStartMonday, fulfillsFilter } from "./helper.js";
+import { possibleFields } from "./meet.js";
+
+const HOUR_HEIGHT = 56; // px per hour in week/day view
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
-  const startEvents = initialEvents;
-  let [events, setEvents] = useState(startEvents);
-  let [filter, setFilter] = useState({field:'',value:''})
-  let [displayFilter,setDisplayFilter] = useState({field:'',value:''})
+  const [events, setEvents] = useState(initialEvents);
+  const [filter, setFilter] = useState({ field: '', value: '' });
+  const [displayFilter, setDisplayFilter] = useState({ field: '', value: '' });
   const [refreshFlag, setRefreshFlag] = useState(false);
   const [view, setView] = useState("month");
+  const scrollRef = useRef(null);
 
   const nextPeriod = () => {
     if (view === "month") nextMonth();
@@ -26,19 +30,50 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   };
   useEffect(() => {
     const _intervalId = setInterval(() => {
-      setRefreshFlag(!refreshFlag);
-      console.log("refreshing");
+      setRefreshFlag(prev => !prev);
     }, 120000);
 
     return () => clearInterval(_intervalId);
   }, []);
-  if (!Array.isArray(events)) {
-    console.warn("events is not an array, using empty array");
-    events = [];
-  }
+
+  useEffect(() => {
+    if ((view === "week" || view === "day") && scrollRef.current) {
+      scrollRef.current.scrollTop = 7 * HOUR_HEIGHT;
+    }
+  }, [view]);
+
   function handleNewEvents(newEvents) {
-    setEvents(newEvents);
+    setEvents(Array.isArray(newEvents) ? newEvents : []);
   }
+
+  // Pre-filter events by the applied filter — recomputed only when events or filter changes
+  const filteredEvents = useMemo(() => {
+    if (!filter.field) return events;
+    return events.filter(event => fulfillsFilter(filter, event));
+  }, [events, filter]);
+
+  // Index filtered events by date key for O(1) per-day lookup
+  const eventsByDay = useMemo(() => {
+    const map = new Map();
+    for (const event of filteredEvents) {
+      const d = event.date;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(event);
+    }
+    for (const dayEvents of map.values()) {
+      dayEvents.sort((a, b) => a.date - b.date);
+    }
+    return map;
+  }, [filteredEvents]);
+
+  // Distinct values for the currently selected field, for the value dropdown
+  const fieldValues = useMemo(() => {
+    if (!displayFilter.field) return [];
+    const vals = new Set(events.map(e => e[displayFilter.field]).filter(Boolean));
+    return [...vals].sort();
+  }, [events, displayFilter.field]);
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const months = [
     "January",
@@ -113,102 +148,48 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     );
   };
 
-  const getEventsForDay = (day,filter=null) => {
-    return events
-      .filter((event) => {
-        const eventDate = new Date(event.date);
-        return (
-          eventDate.getDate() === day &&
-          eventDate.getMonth() === currentDate.getMonth() &&
-          eventDate.getFullYear() === currentDate.getFullYear() &&
-          (filter === null || fulfillsFilter(filter,event) === true)
-        );
-      })
-      .sort((a, b) => a.date - b.date);
+  const getEventsForDay = (date) => {
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return eventsByDay.get(key) || [];
   };
 
-  const isToday = (day) => {
+  const isToday = (date) => {
     const today = new Date();
     return (
-      day === today.getDate() &&
-      currentDate.getMonth() === today.getMonth() &&
-      currentDate.getFullYear() === today.getFullYear()
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
     );
   };
 
-  const renderCalendar = (view) => {
+  const renderMonthView = () => {
     const days = [];
-    let totalDays = 0;
-    let firstDay = new Date();
-    switch (view) {
-      case "month":
-        totalDays = daysInMonth(currentDate);
-        firstDay = firstDayOfMonth(currentDate);
-        for (let i = 0; i < firstDay.getDate(); i++) {
-          days.push(
-            <div
-              key={`empty-${i}`}
-              className="border p-2 h-24 bg-gray-50"
-            ></div>
-          );
-        }
-        break;
-      case "week":
-        totalDays = 7;
-        firstDay = getWeekStartMonday(currentDate);
-        break;
-      case "day":
-        totalDays = 1;
-        firstDay = currentDate;
-        break;
-      default:
-        throw new Error("Unknown view option");
+    const firstDay = firstDayOfMonth(currentDate);
+    const totalDays = daysInMonth(currentDate);
+
+    for (let i = 0; i < (firstDay.getDay() + 6) % 7; i++) {
+      days.push(<div key={`empty-${i}`} className="border p-2 h-24 bg-gray-50" />);
     }
 
-    let currentDay = currentDate;
-    // Days of the month
-    for (let index = 0; index <= totalDays - 1; index++) {
+    let currentDay = new Date(firstDay);
+    for (let i = 0; i < totalDays; i++) {
       const day = currentDay.getDate();
-      const dayEvents = getEventsForDay(day,filter);
-      console.log(dayEvents)
-      const today = isToday(day);
+      const dayEvents = getEventsForDay(currentDay);
+      const today = isToday(currentDay);
 
       days.push(
-        <div
-          key={day}
-          className={`border p-2 h-24 flex flex-col ${
-            today ? "bg-blue-50" : "bg-white"
-          }`}
-        >
-          {/* Day number */}
-          <div
-            className={`text-sm font-semibold mb-1 ${
-              today ? "text-blue-600" : "text-gray-700"
-            }`}
-          >
-            {day}
-          </div>
-
-          {/* Events */}
+        <div key={day} className={`border p-2 h-24 flex flex-col ${today ? "bg-blue-50" : "bg-white"}`}>
+          <div className={`text-sm font-semibold mb-1 ${today ? "text-blue-600" : "text-gray-700"}`}>{day}</div>
           <div className="flex-1 overflow-y-auto space-y-1">
             {dayEvents.map((event, idx) => {
-              const colors =
-                organisationCM.get(event.title) || colorClasses.blue;
+              const colors = organisationCM.get(event.title) || colorClasses.blue;
               return (
                 <div
                   key={idx}
                   className={`text-xs p-1 rounded truncate ${colors.bg} ${colors.text} border-l-2 ${colors.border}`}
-                  title={`${event.title} - ${event.date.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}`}
+                  title={`${event.title} - ${event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                 >
-                  <div className="font-medium">
-                    {event.date.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
+                  <div className="font-medium">{event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                   <div>{event.title}</div>
                 </div>
               );
@@ -216,14 +197,106 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           </div>
         </div>
       );
-      currentDay = new Date(
-        currentDay.getFullYear(),
-        currentDay.getMonth(),
-        currentDay.getDate() + 1
-      );
+      currentDay = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate() + 1);
     }
 
     return days;
+  };
+
+  const renderTimeGrid = (dates) => {
+    const now = new Date();
+    const nowTop = now.getHours() * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT;
+
+    return (
+      <>
+        {/* Sticky day headers */}
+        <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+          <div className="w-14 flex-shrink-0 border-r border-gray-200" />
+          {dates.map((date, i) => {
+            const today = isToday(date);
+            return (
+              <div key={i} className={`flex-1 py-2 text-center border-l border-gray-200 ${today ? "bg-blue-50" : ""}`}>
+                <div className={`text-xs font-medium uppercase tracking-wide ${today ? "text-blue-500" : "text-gray-500"}`}>
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()]}
+                </div>
+                <div className={`text-2xl font-bold ${today ? "text-blue-600" : "text-gray-800"}`}>
+                  {date.getDate()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Scrollable time body */}
+        <div className="overflow-y-auto" ref={scrollRef}>
+          <div className="flex">
+            {/* Hour labels */}
+            <div className="w-14 flex-shrink-0 border-r border-gray-200 select-none">
+              {HOURS.map(hour => (
+                <div key={hour} className="flex items-start justify-end pr-2 pt-1 text-xs text-gray-400" style={{ height: HOUR_HEIGHT }}>
+                  {hour > 0 && `${hour.toString().padStart(2, "0")}:00`}
+                </div>
+              ))}
+            </div>
+
+            {/* Day columns */}
+            {dates.map((date, i) => {
+              const today = isToday(date);
+              const dayEvents = getEventsForDay(date);
+              return (
+                <div key={i} className="flex-1 border-l border-gray-200 relative" style={{ height: 24 * HOUR_HEIGHT }}>
+                  {/* Hour lines */}
+                  {HOURS.map(hour => (
+                    <div key={hour} className="absolute w-full border-t border-gray-100" style={{ top: hour * HOUR_HEIGHT }} />
+                  ))}
+                  {/* Half-hour lines */}
+                  {HOURS.map(hour => (
+                    <div key={`h${hour}`} className="absolute w-full border-t border-gray-50" style={{ top: hour * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
+                  ))}
+                  {/* Current time indicator */}
+                  {today && (
+                    <div className="absolute w-full z-10 flex items-center" style={{ top: nowTop }}>
+                      <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 flex-shrink-0" />
+                      <div className="flex-1 border-t-2 border-red-400" />
+                    </div>
+                  )}
+                  {/* Events */}
+                  {dayEvents.map((event, idx) => {
+                    const top = event.date.getHours() * HOUR_HEIGHT + (event.date.getMinutes() / 60) * HOUR_HEIGHT;
+                    const colors = organisationCM.get(event.title) || colorClasses.blue;
+                    return (
+                      <div
+                        key={idx}
+                        className={`absolute inset-x-0.5 p-1 rounded text-xs ${colors.bg} ${colors.text} border-l-2 ${colors.border} overflow-hidden`}
+                        style={{ top: top + 1, height: HOUR_HEIGHT - 2 }}
+                        title={`${event.title} - ${event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                      >
+                        <div className="font-medium">{event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                        <div className="truncate">{event.title}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const renderCalendar = (view) => {
+    if (view === "month") return renderMonthView();
+
+    if (view === "week") {
+      const monday = getWeekStartMonday(currentDate);
+      const dates = Array.from({ length: 7 }, (_, i) =>
+        new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)
+      );
+      return renderTimeGrid(dates);
+    }
+
+    return renderTimeGrid([currentDate]);
   };
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
@@ -277,52 +350,63 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
 
         {/* Filter Bar */}
         <div className="mb-4 flex gap-3 items-center">
-          <input
-            type="text"
-            placeholder="Field"
+          <select
             value={displayFilter.field}
-            onChange={(e) => setDisplayFilter({field:e.target.value,value: displayFilter.value})}
+            onChange={(e) => setDisplayFilter({ field: e.target.value, value: "" })}
             className="border border-gray-300 p-2 rounded-lg flex-grow"
-          />
-          <input
-            type="text"
-            placeholder="Value"
-            value= {displayFilter.value}
-            onChange={(e) => setDisplayFilter({field:displayFilter.field,value: e.target.value})}
+          >
+            <option value="">Select a field</option>
+            {possibleFields.map((field, index) => (
+              <option key={index} value={field}>
+                {field.charAt(0).toUpperCase() + field.slice(1)}
+              </option>
+            ))}
+          </select>
+          <select
+            value={displayFilter.value}
+            onChange={(e) => setDisplayFilter({ ...displayFilter, value: e.target.value })}
             className="border border-gray-300 p-2 rounded-lg flex-grow"
-          />
+            disabled={!displayFilter.field}
+          >
+            <option value="">All values</option>
+            {fieldValues.map((val, i) => (
+              <option key={i} value={val}>{val}</option>
+            ))}
+          </select>
           <button
-            onClick={() => {
-              setFilter({ field: displayFilter.field, value: displayFilter.value });
-              renderCalendar(view);
-            }}
+            onClick={() => setFilter({ field: displayFilter.field, value: displayFilter.value })}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Filter
           </button>
+          {filter.field && (
+            <button
+              onClick={() => {
+                setFilter({ field: '', value: '' });
+                setDisplayFilter({ field: '', value: '' });
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Calendar grid */}
-        <div
-          className={`
-          border border-gray-200 rounded-lg overflow-hidden
-          ${view === "month" ? "grid grid-cols-7 gap-0" : ""}
-          ${view === "week" ? "grid grid-cols-7" : ""}
-          ${view === "day" ? "grid grid-cols-1" : ""}
-        `}
-        >
-          {(view === "month" || view === "week") &&
-            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div
-                key={day}
-                className="bg-gray-100 p-3 text-center font-semibold text-gray-700 border-b-2 border-gray-300"
-              >
+        {view === "month" ? (
+          <div className="border border-gray-200 rounded-lg overflow-hidden grid grid-cols-7">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+              <div key={day} className="bg-gray-100 p-3 text-center font-semibold text-gray-700 border-b-2 border-gray-300">
                 {day}
               </div>
             ))}
-
-          {renderCalendar(view, filter)}
-        </div>
+            {renderCalendar(view)}
+          </div>
+        ) : (
+          <div className="border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            {renderCalendar(view)}
+          </div>
+        )}
       </div>
 
       {/* Updates */}
