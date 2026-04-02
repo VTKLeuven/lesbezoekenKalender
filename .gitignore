@@ -22,3 +22,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 sensitiveData.js
+
+# Auth server secrets — never commit these
+server/users.json
+server/.env

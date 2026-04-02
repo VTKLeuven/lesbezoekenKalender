@@ -2,11 +2,16 @@
   "name": "my-calendar",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:3001",
   "dependencies": {
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "13.5.0",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "0.545.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -14,10 +19,13 @@
     "web-vitals": "2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "concurrently \"react-scripts start\" \"node server/index.js\"",
+    "start:react": "react-scripts start",
+    "start:server": "node server/index.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "hash-password": "node server/hash-password.js"
   },
   "eslintConfig": {
     "extends": [
@@ -39,6 +47,7 @@
   },
   "devDependencies": {
     "autoprefixer": "10.4.21",
+    "concurrently": "^9.1.2",
     "postcss": "8.5.6",
     "tailwindcss": "3.4.18"
   }

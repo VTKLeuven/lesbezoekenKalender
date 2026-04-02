@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { colorClasses } from "./colorClasses.js";
-import { webAppUrl, apiKey } from "./sensitiveData.js";
 import { UseCheckForUpdates } from "./hooks.js";
 import { getWeekStartMonday, fulfillsFilter } from "./helper.js";
 import { possibleFields } from "./meet.js";
+import { useAuth } from "./AuthContext";
 
 const HOUR_HEIGHT = 56; // px per hour in week/day view
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
+  const { user, logout } = useAuth();
   const [events, setEvents] = useState(initialEvents);
   const [filter, setFilter] = useState({ field: '', value: '' });
   const [displayFilter, setDisplayFilter] = useState({ field: '', value: '' });
@@ -46,11 +47,19 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     setEvents(Array.isArray(newEvents) ? newEvents : []);
   }
 
-  // Pre-filter events by the applied filter — recomputed only when events or filter changes
+  // Events visible to this user based on their role/allowedHosts
+  const baseEvents = useMemo(() => {
+    if (user?.role !== 'admin' && user?.allowedHosts?.length) {
+      return events.filter(e => user.allowedHosts.includes(e.host));
+    }
+    return events;
+  }, [events, user]);
+
+  // Pre-filter events by the applied filter — recomputed only when baseEvents or filter changes
   const filteredEvents = useMemo(() => {
-    if (!filter.field) return events;
-    return events.filter(event => fulfillsFilter(filter, event));
-  }, [events, filter]);
+    if (!filter.field) return baseEvents;
+    return baseEvents.filter(event => fulfillsFilter(filter, event));
+  }, [baseEvents, filter]);
 
   // Index filtered events by date key for O(1) per-day lookup
   const eventsByDay = useMemo(() => {
@@ -70,9 +79,9 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   // Distinct values for the currently selected field, for the value dropdown
   const fieldValues = useMemo(() => {
     if (!displayFilter.field) return [];
-    const vals = new Set(events.map(e => e[displayFilter.field]).filter(Boolean));
+    const vals = new Set(baseEvents.map(e => e[displayFilter.field]).filter(Boolean));
     return [...vals].sort();
-  }, [events, displayFilter.field]);
+  }, [baseEvents, displayFilter.field]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const months = [
@@ -311,6 +320,17 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
             </h1>
           </div>
 
+          {/* User info + logout */}
+          <div className="flex items-center gap-3 text-sm text-gray-600">
+            <span>{user?.username}</span>
+            <button
+              onClick={logout}
+              className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700"
+            >
+              Sign out
+            </button>
+          </div>
+
           {/* Navigation + View toggle */}
           <div className="flex items-center gap-3">
             {/* Prev / Next */}
@@ -413,8 +433,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
       <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
         <UseCheckForUpdates
           refreshFlag={refreshFlag}
-          webAppUrl={webAppUrl}
-          apiKey={apiKey}
           updateFunc={handleNewEvents}
         />
       </div>

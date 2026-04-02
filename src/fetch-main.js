@@ -1,11 +1,16 @@
 import { Meet } from "./meet.js";
 import { colorClasses } from "./colorClasses.js";
+
+function getAuthHeader() {
+  const token = sessionStorage.getItem('authToken');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // temp fix met copied colorClasses, could do on actual file if you have proper teardown
-export async function callWebApp(webAppUrl, apiKey) {
+export async function callWebApp() {
   let colorClassesCopy = structuredClone(colorClasses);
   try {
-    const url = `${webAppUrl}?key=${apiKey}`;
-    const response = await fetch(url);
+    const response = await fetch('/api/data', { headers: getAuthHeader() });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -15,7 +20,7 @@ export async function callWebApp(webAppUrl, apiKey) {
     let globalFullColorFlag = false;
     for (const obj of data) {
       const newMeet = new Meet(new Date(obj.Timestamp), obj.Organisatie);
-      newMeet.host = obj.Organisatie
+      newMeet.host = obj.Organisatie;
       if (organisationsColorMap.has(obj.Organisatie)) {
         newMeet.color = organisationsColorMap.get(obj.Organisatie);
       } else {
@@ -47,5 +52,6 @@ export async function callWebApp(webAppUrl, apiKey) {
     return [meets, organisationsColorMap];
   } catch (error) {
     console.error("Error: ", error.message);
+    throw error;
   }
 }

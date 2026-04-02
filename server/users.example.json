@@ -1,0 +1,22 @@
+[
+  {
+    "username": "admin",
+    "passwordHash": "REPLACE — run: node server/hash-password.js yourpassword",
+    "role": "admin",
+    "_comment": "Admin sees all events and can do everything."
+  },
+  {
+    "username": "user1",
+    "passwordHash": "REPLACE — run: node server/hash-password.js yourpassword",
+    "role": "user",
+    "allowedHosts": ["Organisation A", "Organisation B"],
+    "_comment": "This user only sees events from the listed organisations."
+  },
+  {
+    "username": "viewer",
+    "passwordHash": "REPLACE — run: node server/hash-password.js yourpassword",
+    "role": "user",
+    "allowedHosts": null,
+    "_comment": "null allowedHosts = sees all events, but cannot administrate."
+  }
+]

@@ -1,28 +1,25 @@
 import { useEffect, useState } from "react";
 import { callWebApp } from "./fetch-main";
 
-export function UseCheckForUpdates({
-  webAppUrl,
-  apiKey,
-  refreshFlag,
-  updateFunc,
-}) {
+function getAuthHeader() {
+  const token = sessionStorage.getItem('authToken');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export function UseCheckForUpdates({ refreshFlag, updateFunc }) {
   const [lastModified, setLastModified] = useState(0);
+
   useEffect(() => {
     const checkLastModified = async () => {
       try {
-        const url = `${webAppUrl}?key=${apiKey}&action=checkUpdate`;
-        const response = await fetch(url);
-        const sheetLastModified = await response.json(); // or .json() depending on your backend
+        const response = await fetch('/api/check-update', { headers: getAuthHeader() });
+        const sheetLastModified = await response.json();
         if (sheetLastModified.lastModified > lastModified) {
           console.log("Sheet has been updated!");
           setLastModified(sheetLastModified.lastModified);
-          const [newEvents] = await callWebApp(webAppUrl, apiKey);
+          const [newEvents] = await callWebApp();
           updateFunc(newEvents);
-          return;
-        } else if (sheetLastModified.lastModified === lastModified) {
-          return;
-        } else {
+        } else if (sheetLastModified.lastModified !== lastModified) {
           throw new Error("SheetLastModified should not take this value");
         }
       } catch (error) {
@@ -31,5 +28,5 @@ export function UseCheckForUpdates({
     };
 
     checkLastModified();
-  }, [lastModified, webAppUrl, apiKey, refreshFlag, updateFunc]);
+  }, [lastModified, refreshFlag, updateFunc]);
 }

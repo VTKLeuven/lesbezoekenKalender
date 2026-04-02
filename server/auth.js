@@ -1,0 +1,27 @@
+const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('./config');
+
+// Verifies the Bearer token and attaches req.user.
+// Swap this function's internals to change auth strategy (e.g. sessions, OAuth).
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const token = authHeader.slice(7);
+  try {
+    req.user = jwt.verify(token, jwtSecret);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin };
