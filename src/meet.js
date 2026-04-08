@@ -1,5 +1,5 @@
 class Meet {
-  constructor(date, title, color = "blue", host = null) {
+  constructor(date, title, color = "blue", host = null, status = 'pending', sheetRow = null) {
     // Validate and set date
     if (date instanceof Date) {
       this.date = date;
@@ -16,7 +16,11 @@ class Meet {
 
     this.title = title;
     this.color = color;
-    this.host = host
+    this.host = host;
+    // 'approved' | 'rejected' | 'pending'
+    this.status = status;
+    // 1-based row number in the Google Sheet
+    this.sheetRow = sheetRow;
   }
 }
 

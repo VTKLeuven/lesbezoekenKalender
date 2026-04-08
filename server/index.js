@@ -87,6 +87,33 @@ app.get('/api/data', requireAuth, async (req, res) => {
   }
 });
 
+// Approve or reject a pending meet by updating its row color in the Google Sheet.
+// Colors: faint green (#d9ead3) for approved, faint red (#f4cccc) for rejected.
+app.post('/api/approve', requireAuth, requireAdmin, async (req, res) => {
+  if (!webAppUrl || !apiKey) {
+    return res.status(500).json({ error: 'Server not configured' });
+  }
+  const { sheetRow: sheetRowRaw, action } = req.body;
+  const sheetRow = Number(sheetRowRaw);
+  if (!Number.isInteger(sheetRow) || sheetRow < 1 || !['approve', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'sheetRow (positive integer) and action (approve|reject) required' });
+  }
+  const color = action === 'approve' ? '#d9ead3' : '#f4cccc';
+  try {
+    const response = await fetch(webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: apiKey, sheetRow, color }),
+    });
+    if (!response.ok) throw new Error(`Upstream error: ${response.status}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Approve error:', err.message);
+    res.status(502).json({ error: 'Failed to update upstream' });
+  }
+});
+
 app.get('/api/check-update', requireAuth, async (req, res) => {
   if (!webAppUrl || !apiKey) {
     return res.status(500).json({ error: 'Server not configured' });
