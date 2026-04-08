@@ -24,4 +24,13 @@ function findUser(username) {
   return loadUsers().find(u => u.username === username) || null;
 }
 
-module.exports = { findUser };
+function createUser(username, passwordHash, allowedHosts) {
+  const users = loadUsers();
+  if (users.find(u => u.username === username)) {
+    throw new Error(`Username "${username}" already exists`);
+  }
+  users.push({ username, passwordHash, role: 'user', allowedHosts: allowedHosts ?? null });
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+}
+
+module.exports = { findUser, createUser };

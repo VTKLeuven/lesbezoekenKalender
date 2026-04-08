@@ -3,8 +3,8 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const { findUser } = require('./users');
-const { requireAuth } = require('./auth');
+const { findUser, createUser } = require('./users');
+const { requireAuth, requireAdmin } = require('./auth');
 const { jwtSecret, tokenExpiresIn, webAppUrl, apiKey, port } = require('./config');
 
 const app = express();
@@ -41,6 +41,29 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+// ---------------------------------------------------------------------------
+// User management (admin only)
+// ---------------------------------------------------------------------------
+
+app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  const { username, password, allowedHosts } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+  if (allowedHosts !== undefined && allowedHosts !== null && !Array.isArray(allowedHosts)) {
+    return res.status(400).json({ error: 'allowedHosts must be an array or null' });
+  }
+  try {
+    const { bcryptRounds } = require('./config');
+    const passwordHash = await bcrypt.hash(password, bcryptRounds);
+    createUser(username, passwordHash, allowedHosts ?? null);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    const status = err.message.includes('already exists') ? 409 : 500;
+    res.status(status).json({ error: err.message });
+  }
 });
 
 // ---------------------------------------------------------------------------

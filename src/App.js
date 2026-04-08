@@ -5,12 +5,14 @@ import { UseCheckForUpdates } from "./hooks.js";
 import { getWeekStartMonday, fulfillsFilter } from "./helper.js";
 import { possibleFields } from "./meet.js";
 import { useAuth } from "./AuthContext";
+import CreateUserModal from "./CreateUserModal";
 
 const HOUR_HEIGHT = 56; // px per hour in week/day view
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const { user, logout } = useAuth();
+  const [showCreateUser, setShowCreateUser] = useState(false);
   const [events, setEvents] = useState(initialEvents);
   const [filter, setFilter] = useState({ field: '', value: '' });
   const [displayFilter, setDisplayFilter] = useState({ field: '', value: '' });
@@ -309,6 +311,12 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   };
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
+      {showCreateUser && (
+        <CreateUserModal
+          onClose={() => setShowCreateUser(false)}
+          organisations={[...new Set(events.map(e => e.title).filter(Boolean))].sort()}
+        />
+      )}
       <div className="bg-white rounded-lg shadow-lg p-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
@@ -323,6 +331,14 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           {/* User info + logout */}
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <span>{user?.username}</span>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setShowCreateUser(true)}
+                className="px-3 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 transition text-blue-700"
+              >
+                Add user
+              </button>
+            )}
             <button
               onClick={logout}
               className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700"
