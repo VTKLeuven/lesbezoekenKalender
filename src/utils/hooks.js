@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { callWebApp } from "./fetch-main";
+import { callWebApp } from "./fetchData";
 
 function getAuthHeader() {
   const token = sessionStorage.getItem('authToken');

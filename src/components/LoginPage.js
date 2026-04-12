@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();

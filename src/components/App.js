@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Calendar, ClipboardList, X, Check, Filter, UserPlus, LogOut, GraduationCap, User, CalendarPlus, Pencil } from "lucide-react";
-import { colorClasses } from "./colorClasses.js";
-import { UseCheckForUpdates } from "./hooks.js";
-import { getWeekStartMonday, fulfillsFilter } from "./helper.js";
-import { possibleFields } from "./meet.js";
-import { callWebApp } from "./fetch-main";
-import { useAuth } from "./AuthContext";
+import { colorClasses } from "../utils/colorClasses.js";
+import { UseCheckForUpdates } from "../utils/hooks.js";
+import { getWeekStartMonday, fulfillsFilter } from "../utils/helper.js";
+import { possibleFields } from "../utils/meet.js";
+import { callWebApp } from "../utils/fetchData";
+import { useAuth } from "../context/AuthContext";
 import CreateUserModal from "./CreateUserModal";
 import AdminMeetModal from "./AdminMeetModal";
 

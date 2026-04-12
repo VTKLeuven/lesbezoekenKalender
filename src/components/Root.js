@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../context/AuthContext';
 import App from './App';
 import LoginPage from './LoginPage';
-import { callWebApp } from './fetch-main';
+import { callWebApp } from '../utils/fetchData';
 import { AlertTriangle } from 'lucide-react';
 
 function Spinner() {

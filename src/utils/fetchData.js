@@ -48,7 +48,7 @@ function parseSheetDate(raw) {
   // Sheet locale format: DD-M-YYYY H:mm:ss or D/M/YYYY H:mm:ss
   // Swap day and month so JS reads it as MM/DD/YYYY
   const swapped = s.replace(
-    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+    /^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/,
     (_, d, m, y) => `${m}/${d}/${y}`
   );
   const d2 = new Date(swapped);
