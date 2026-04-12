@@ -24,7 +24,7 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }} &&
             git fetch --all &&
             git reset --hard origin/main &&
-            npm ci &&
-            npm run build &&
-            pm2 startOrReload ecosystem.config.js --env production
+            test -f server/users.json || { echo 'Missing server/users.json — copy server/users.example.json on the host first.' >&2; exit 1; } &&
+            test -f server/local-meets.json || touch server/local-meets.json &&
+            docker compose up -d --build
           "

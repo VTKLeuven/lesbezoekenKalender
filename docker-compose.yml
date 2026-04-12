@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    image: lesbezoeken-kalender:latest
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-3010}:3010"
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server/users.json:/app/server/users.json
+      - ./server/local-meets.json:/app/server/local-meets.json

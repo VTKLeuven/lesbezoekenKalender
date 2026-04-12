@@ -1,0 +1,11 @@
+node_modules
+build
+.git
+.github
+*.md
+.DS_Store
+npm-debug.log*
+coverage
+server/.env
+server/users.json
+server/local-meets.json
