@@ -3,11 +3,33 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 const { findUser, createUser } = require('./users');
 const { requireAuth, requireAdmin } = require('./auth');
 const { jwtSecret, tokenExpiresIn, webAppUrl, apiKey, port } = require('./config');
 
 const app = express();
+
+// ---------------------------------------------------------------------------
+// Local meets storage (admin-added meets + field overrides for sheet meets)
+// ---------------------------------------------------------------------------
+
+const LOCAL_MEETS_FILE = path.join(__dirname, 'local-meets.json');
+
+function readLocalMeets() {
+  try {
+    if (fs.existsSync(LOCAL_MEETS_FILE)) {
+      return JSON.parse(fs.readFileSync(LOCAL_MEETS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error reading local meets file:', e.message);
+  }
+  return { overrides: {} };
+}
+
+function writeLocalMeets(data) {
+  fs.writeFileSync(LOCAL_MEETS_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
@@ -80,7 +102,18 @@ app.get('/api/data', requireAuth, async (req, res) => {
     const response = await fetch(`${webAppUrl}?key=${apiKey}`);
     if (!response.ok) throw new Error(`Upstream error: ${response.status}`);
     const data = await response.json();
-    res.json(data);
+
+    // Apply any pending local overrides (proposed edits that the sheet owner hasn't acted on yet)
+    const { overrides } = readLocalMeets();
+    const mergedData = data.map(item => {
+      const row = typeof item.sheetRow === 'number' ? item.sheetRow : null;
+      if (row !== null && overrides[String(row)]) {
+        return { ...item, ...overrides[String(row)] };
+      }
+      return item;
+    });
+
+    res.json(mergedData);
   } catch (err) {
     console.error('Data fetch error:', err.message);
     res.status(502).json({ error: 'Failed to fetch data from upstream' });
@@ -112,6 +145,96 @@ app.post('/api/approve', requireAuth, requireAdmin, async (req, res) => {
     console.error('Approve error:', err.message);
     res.status(502).json({ error: 'Failed to update upstream' });
   }
+});
+
+// Add a new meet as a proposition row in the sheet (yellow background, pending review).
+// The Apps Script writes the row and returns the real sheetRow number.
+app.post('/api/meets', requireAuth, requireAdmin, async (req, res) => {
+  if (!webAppUrl || !apiKey) {
+    return res.status(500).json({ error: 'Server not configured' });
+  }
+  const { Timestamp, Organisatie, Klas, Lesgever } = req.body;
+  if (!Timestamp || !Organisatie) {
+    return res.status(400).json({ error: 'Timestamp and Organisatie required' });
+  }
+  try {
+    const response = await fetch(webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: apiKey,
+        action: 'addProposition',
+        data: { Timestamp, Organisatie, Klas: Klas || '', Lesgever: Lesgever || '' },
+      }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      console.error('Add proposition upstream error:', response.status, text);
+      throw new Error(`Upstream error ${response.status}: ${text.slice(0, 200)}`);
+    }
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error(`Upstream returned non-JSON: ${text.slice(0, 200)}`); }
+    if (data.error) throw new Error(data.error);
+    res.status(201).json({ ok: true, sheetRow: data.sheetRow });
+  } catch (err) {
+    console.error('Add proposition error:', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Propose edits to an existing sheet meet.
+// Values in the sheet are NOT changed — the Apps Script writes cell notes so the
+// sheet owner can review and decide whether to apply each proposed change.
+// Field overrides are also stored locally so the calendar reflects them immediately.
+app.patch('/api/meets/:id', requireAuth, requireAdmin, async (req, res) => {
+  if (!webAppUrl || !apiKey) {
+    return res.status(500).json({ error: 'Server not configured' });
+  }
+  const { id } = req.params;
+  const fields = { ...req.body };
+
+  const sheetRow = Number(id);
+  if (!Number.isInteger(sheetRow) || sheetRow < 1) {
+    return res.status(400).json({ error: 'Invalid meet ID — must be a positive sheet row number' });
+  }
+
+  // Build the changes object that goes to Apps Script (only sheet-storable fields)
+  const sheetFields = ['Timestamp', 'Organisatie', 'Klas', 'Lesgever'];
+  const changes = {};
+  for (const f of sheetFields) {
+    if (f in fields) changes[f] = fields[f];
+  }
+
+  // If there are field changes, write them as cell notes via Apps Script
+  if (Object.keys(changes).length > 0) {
+    try {
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: apiKey, action: 'editProposition', sheetRow, changes }),
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        console.error('Edit proposition upstream error:', response.status, text);
+        throw new Error(`Upstream error ${response.status}: ${text.slice(0, 200)}`);
+      }
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error(`Upstream returned non-JSON: ${text.slice(0, 200)}`); }
+      if (data.error) throw new Error(data.error);
+    } catch (err) {
+      console.error('Edit proposition error:', err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  // Store overrides locally so the calendar shows proposed values immediately.
+  // Keys mirror the sheet field names so GET /api/data can merge them.
+  const local = readLocalMeets();
+  if (!local.overrides[id]) local.overrides[id] = {};
+  Object.assign(local.overrides[id], fields);
+  writeLocalMeets(local);
+
+  res.json({ ok: true });
 });
 
 app.get('/api/check-update', requireAuth, async (req, res) => {

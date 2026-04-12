@@ -1,32 +1,32 @@
 const colorClasses = {
   blue: {
     bg: "bg-blue-100",
-    text: "text-blue-800",
+    text: "text-blue-900",
     border: "border-blue-500",
     organisation: null,
   },
   green: {
-    bg: "bg-green-100",
-    text: "text-green-800",
-    border: "border-green-500",
+    bg: "bg-emerald-100",
+    text: "text-emerald-900",
+    border: "border-emerald-500",
     organisation: null,
   },
   purple: {
-    bg: "bg-purple-100",
-    text: "text-purple-800",
-    border: "border-purple-500",
+    bg: "bg-violet-100",
+    text: "text-violet-900",
+    border: "border-violet-500",
     organisation: null,
   },
   orange: {
     bg: "bg-orange-100",
-    text: "text-orange-800",
+    text: "text-orange-900",
     border: "border-orange-500",
     organisation: null,
   },
   red: {
-    bg: "bg-red-100",
-    text: "text-red-800",
-    border: "border-red-500",
+    bg: "bg-rose-100",
+    text: "text-rose-900",
+    border: "border-rose-500",
     organisation: null,
   },
 };

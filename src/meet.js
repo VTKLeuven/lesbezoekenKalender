@@ -1,5 +1,5 @@
 class Meet {
-  constructor(date, title, color = "blue", host = null, status = 'pending', sheetRow = null) {
+  constructor(date, title, color = "blue", host = null, status = 'pending', sheetRow = null, klas = null, lesgever = null, localId = null) {
     // Validate and set date
     if (date instanceof Date) {
       this.date = date;
@@ -21,8 +21,13 @@ class Meet {
     this.status = status;
     // 1-based row number in the Google Sheet
     this.sheetRow = sheetRow;
+    // The class being visited
+    this.klas = klas;
+    // The professor teaching the class
+    this.lesgever = lesgever;
+    this.localId = localId;
   }
 }
 
-const possibleFields = ['host', 'title'];
+const possibleFields = ['host', 'title', 'klas', 'lesgever'];
 export { Meet, possibleFields };

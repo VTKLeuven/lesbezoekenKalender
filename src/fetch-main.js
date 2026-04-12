@@ -24,6 +24,37 @@ function getStatusFromBgColor(bgColor) {
   return 'pending';
 }
 
+/**
+ * Parse a timestamp value, which may be:
+ *   - datetime-local string: "2026-04-08T10:00"          (from admin form, local time)
+ *   - ISO string:            "2026-04-08T10:00:00.000Z"  (UTC)
+ *   - Sheet locale string:   "6-9-2025 7:49:14"          (DD-M-YYYY H:mm:ss, Belgian)
+ *   - Already a number (ms epoch)
+ * Returns a valid Date or null.
+ */
+function parseSheetDate(raw) {
+  if (!raw) return null;
+  // Already a number (epoch ms)
+  if (typeof raw === 'number') {
+    const d = new Date(raw);
+    return isNaN(d) ? null : d;
+  }
+  const s = String(raw).trim();
+  // datetime-local or ISO: YYYY-MM-DD... — safe to parse directly
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+  // Sheet locale format: DD-M-YYYY H:mm:ss or D/M/YYYY H:mm:ss
+  // Swap day and month so JS reads it as MM/DD/YYYY
+  const swapped = s.replace(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+    (_, d, m, y) => `${m}/${d}/${y}`
+  );
+  const d2 = new Date(swapped);
+  return isNaN(d2) ? null : d2;
+}
+
 // temp fix met copied colorClasses, could do on actual file if you have proper teardown
 export async function callWebApp() {
   let colorClassesCopy = structuredClone(colorClasses);
@@ -38,16 +69,24 @@ export async function callWebApp() {
     let globalFullColorFlag = false;
     for (let idx = 0; idx < data.length; idx++) {
       const obj = data[idx];
+      const parsedDate = parseSheetDate(obj.Timestamp);
+      if (!parsedDate) {
+        console.warn(`Skipping row ${idx + 2}: unparseable Timestamp "${obj.Timestamp}"`);
+        continue;
+      }
       const status = getStatusFromBgColor(obj.bgColor);
       // Use sheetRow from Apps Script if available; fall back to index + 2 (assuming 1 header row)
       const sheetRow = typeof obj.sheetRow === 'number' ? obj.sheetRow : idx + 2;
       const newMeet = new Meet(
-        new Date(obj.Timestamp),
+        parsedDate,
         obj.Organisatie,
         "blue",
         obj.Organisatie,
         status,
-        sheetRow
+        sheetRow,
+        obj.Klas || null,
+        obj.Lesgever || null,
+        obj.localId || null
       );
       if (organisationsColorMap.has(obj.Organisatie)) {
         newMeet.color = organisationsColorMap.get(obj.Organisatie);

@@ -42,27 +42,3 @@ npm start
 Opens at [http://localhost:3000](http://localhost:3000). The page reloads on file changes.
 
 ---
-
-## Running tests
-
-```bash
-npm test
-```
-
-Launches Jest in interactive watch mode via `react-scripts test`.
-
-> **Note:** `src/App.test.js` is the Create React App placeholder and will currently fail — it looks for text that does not exist in this app. Replace it with tests specific to this project before running in CI.
-
-The testing stack is:
-- [Jest](https://jestjs.io/) (via `react-scripts`)
-- [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/)
-- [@testing-library/jest-dom](https://github.com/testing-library/jest-dom) — custom DOM matchers (configured in `src/setupTests.js`)
-
----
-
-## Other scripts
-
-| Command | Description |
-|---|---|
-| `npm run build` | Production build to `build/` |
-| `npm run eject` | Eject from Create React App (irreversible) |
