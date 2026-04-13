@@ -12,6 +12,9 @@ import AdminMeetModal from "./AdminMeetModal";
 const HOUR_HEIGHT = 56;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+const formatTime = date =>
+  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
 function getAuthHeader() {
   const token = sessionStorage.getItem('authToken');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -42,7 +45,7 @@ function ApprovalModal({ event, onApprove, onReject, onClose, loading }) {
           {[
             { label: 'Organisation', value: event.title },
             { label: 'Date', value: event.date.toLocaleDateString() },
-            { label: 'Time', value: event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+            { label: 'Time', value: formatTime(event.date) },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</span>
@@ -84,7 +87,7 @@ function EventDetailModal({ event, colors, onClose, isAdmin, onEdit }) {
     event.klas ? { label: 'Class', value: event.klas, icon: <GraduationCap className="w-3.5 h-3.5" /> } : null,
     event.lesgever ? { label: 'Professor', value: event.lesgever, icon: <User className="w-3.5 h-3.5" /> } : null,
     { label: 'Date', value: event.date.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), icon: null },
-    { label: 'Time', value: event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), icon: null },
+    { label: 'Time', value: formatTime(event.date), icon: null },
   ].filter(Boolean);
 
   return (
@@ -361,10 +364,10 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
                   key={idx}
                   onClick={() => handleEventClick(event)}
                   className={`text-xs px-1.5 py-0.5 rounded-md border-l-2 transition-all cursor-pointer ${colors.bg} ${colors.text} ${colors.border} ${eventStatusClasses(event)}`}
-                  title={`${event.title}${event.klas ? ` · ${event.klas}` : ''}${event.lesgever ? ` · ${event.lesgever}` : ''} — ${event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${event.status === 'pending' ? ' (pending approval)' : event.status === 'rejected' ? ' (rejected)' : ''}`}
+                  title={`${event.title}${event.klas ? ` · ${event.klas}` : ''}${event.lesgever ? ` · ${event.lesgever}` : ''} — ${formatTime(event.date)}${event.status === 'pending' ? ' (pending approval)' : event.status === 'rejected' ? ' (rejected)' : ''}`}
                 >
                   <div className="flex items-baseline gap-1 truncate">
-                    <span className="font-semibold flex-shrink-0">{event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="font-semibold flex-shrink-0">{formatTime(event.date)}</span>
                     <span className={`truncate ${event.status === 'rejected' ? 'line-through' : ''}`}>{event.title}</span>
                   </div>
                   {showKlas && (
@@ -448,9 +451,9 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
                         onClick={() => handleEventClick(event)}
                         className={`absolute inset-x-0.5 px-1.5 py-1 rounded-lg text-xs border-l-2 overflow-hidden transition-all cursor-pointer ${colors.bg} ${colors.text} ${colors.border} ${eventStatusClasses(event)}`}
                         style={{ top: top + 1, height: HOUR_HEIGHT - 2 }}
-                        title={`${event.title}${event.klas ? ` · ${event.klas}` : ''}${event.lesgever ? ` · ${event.lesgever}` : ''} — ${event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${event.status === 'pending' ? ' (pending approval)' : event.status === 'rejected' ? ' (rejected)' : ''}`}
+                        title={`${event.title}${event.klas ? ` · ${event.klas}` : ''}${event.lesgever ? ` · ${event.lesgever}` : ''} — ${formatTime(event.date)}${event.status === 'pending' ? ' (pending approval)' : event.status === 'rejected' ? ' (rejected)' : ''}`}
                       >
-                        <div className="font-semibold leading-tight">{event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                        <div className="font-semibold leading-tight">{formatTime(event.date)}</div>
                         <div className={`truncate leading-tight mt-0.5 ${event.status === 'rejected' ? 'line-through opacity-60' : ''}`}>{event.title}</div>
                         {showKlas && (
                           <div className="truncate leading-tight opacity-75" style={{ fontSize: '0.65rem' }}>{event.klas}</div>

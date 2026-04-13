@@ -43,7 +43,9 @@ function parseSheetDate(raw) {
   // datetime-local or ISO: YYYY-MM-DD... — safe to parse directly
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const d = new Date(s);
-    return isNaN(d) ? null : d;
+    if (isNaN(d)) return null;
+    d.setSeconds(0, 0);
+    return d;
   }
   // Sheet locale format: DD-M-YYYY H:mm:ss or D/M/YYYY H:mm:ss
   // Swap day and month so JS reads it as MM/DD/YYYY
