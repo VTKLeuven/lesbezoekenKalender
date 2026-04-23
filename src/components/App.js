@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Calendar, ClipboardList, X, Check, Filter, UserPlus, LogOut, GraduationCap, User, CalendarPlus, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ClipboardList, X, Check, Filter, Users, LogOut, GraduationCap, User, CalendarPlus, Pencil } from "lucide-react";
 import { colorClasses } from "../utils/colorClasses.js";
 import { UseCheckForUpdates } from "../utils/hooks.js";
 import { getWeekStartMonday, fulfillsFilter } from "../utils/helper.js";
 import { possibleFields } from "../utils/meet.js";
 import { callWebApp } from "../utils/fetchData";
 import { useAuth } from "../context/AuthContext";
-import CreateUserModal from "./CreateUserModal";
 import AdminMeetModal from "./AdminMeetModal";
+import UsersTab from "./UsersTab";
 
 const HOUR_HEIGHT = 56;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -139,7 +139,7 @@ function EventDetailModal({ event, colors, onClose, isAdmin, onEdit }) {
 
 const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const { user, logout } = useAuth();
-  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [activeTab, setActiveTab] = useState('calendar');
   const [events, setEvents] = useState(initialEvents);
   const [filter, setFilter] = useState({ field: '', value: '' });
   const [displayFilter, setDisplayFilter] = useState({ field: '', value: '' });
@@ -485,12 +485,6 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   return (
     <div className="min-h-screen p-4 md:p-6"
       style={{ background: 'linear-gradient(135deg, #f1f5f9 0%, #e0e7ff 50%, #f1f5f9 100%)' }}>
-      {showCreateUser && (
-        <CreateUserModal
-          onClose={() => setShowCreateUser(false)}
-          organisations={[...new Set(events.map(e => e.title).filter(Boolean))].sort()}
-        />
-      )}
       {showAddMeet && (
         <AdminMeetModal
           mode="add"
@@ -546,36 +540,59 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
                   </h1>
                   <p className="text-indigo-200 text-xs font-medium">Classroom Visit Schedule</p>
                 </div>
-                <div className="flex gap-1 ml-2">
-                  <button onClick={prevPeriod}
-                    className="p-1.5 rounded-lg transition-all text-white/80 hover:text-white"
-                    style={{ background: 'rgba(255,255,255,0.15)' }}>
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button onClick={nextPeriod}
-                    className="p-1.5 rounded-lg transition-all text-white/80 hover:text-white"
-                    style={{ background: 'rgba(255,255,255,0.15)' }}>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+                {activeTab === 'calendar' && (
+                  <div className="flex gap-1 ml-2">
+                    <button onClick={prevPeriod}
+                      className="p-1.5 rounded-lg transition-all text-white/80 hover:text-white"
+                      style={{ background: 'rgba(255,255,255,0.15)' }}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button onClick={nextPeriod}
+                      className="p-1.5 rounded-lg transition-all text-white/80 hover:text-white"
+                      style={{ background: 'rgba(255,255,255,0.15)' }}>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* View toggle */}
-              <div className="flex items-center gap-1 p-1 rounded-xl"
-                style={{ background: 'rgba(0,0,0,0.2)' }}>
-                {["Month", "Week", "Day"].map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setView(v.toLowerCase())}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      view === v.toLowerCase()
-                        ? "bg-white text-indigo-700 shadow-sm"
-                        : "text-white/70 hover:text-white hover:bg-white/10"
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
+              {/* Tab + view toggle */}
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <button
+                      onClick={() => setActiveTab('calendar')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeTab === 'calendar' ? 'bg-white text-indigo-700 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}>
+                      <Calendar className="w-3.5 h-3.5" /> Calendar
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('users')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeTab === 'users' ? 'bg-white text-indigo-700 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}>
+                      <Users className="w-3.5 h-3.5" /> Users
+                    </button>
+                  </div>
+                )}
+                {activeTab === 'calendar' && (
+                  <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    {["Month", "Week", "Day"].map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setView(v.toLowerCase())}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          view === v.toLowerCase()
+                            ? "bg-white text-indigo-700 shadow-sm"
+                            : "text-white/70 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* User info + admin controls */}
@@ -584,14 +601,8 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
                   style={{ background: 'rgba(255,255,255,0.1)' }}>
                   {user?.username}
                 </span>
-                {isAdmin && (
+                {isAdmin && activeTab === 'calendar' && (
                   <>
-                    <button onClick={() => setShowCreateUser(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/90 hover:text-white transition-all"
-                      style={{ background: 'rgba(255,255,255,0.15)' }}>
-                      <UserPlus className="w-3.5 h-3.5" />
-                      Add user
-                    </button>
                     <button onClick={() => setShowAddMeet(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/90 hover:text-white transition-all"
                       style={{ background: 'rgba(255,255,255,0.15)' }}>
@@ -634,6 +645,12 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
           </div>
 
           {/* ── Content area ─────────────────────────────────────── */}
+          {activeTab === 'users' ? (
+            <UsersTab
+              organisations={[...new Set(events.map(e => e.title).filter(Boolean))].sort()}
+              currentUsername={user?.username}
+            />
+          ) : (
           <div className="p-5">
 
             {/* Approval mode banner */}
@@ -722,6 +739,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 

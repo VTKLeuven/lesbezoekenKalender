@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
-const { findUser, createUser } = require('./users');
+const { findUser, createUser, getAllUsers, updateUser, deleteUser } = require('./users');
 const { requireAuth, requireAdmin } = require('./auth');
 const { jwtSecret, tokenExpiresIn, webAppUrl, apiKey, port } = require('./config');
 
@@ -70,9 +70,12 @@ app.get('/api/me', requireAuth, (req, res) => {
 // ---------------------------------------------------------------------------
 
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
-  const { username, password, allowedHosts } = req.body;
+  const { username, password, allowedHosts, role } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
+  }
+  if (role !== undefined && !['admin', 'user'].includes(role)) {
+    return res.status(400).json({ error: 'Role must be "admin" or "user"' });
   }
   if (allowedHosts !== undefined && allowedHosts !== null && !Array.isArray(allowedHosts)) {
     return res.status(400).json({ error: 'allowedHosts must be an array or null' });
@@ -80,10 +83,55 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { bcryptRounds } = require('./config');
     const passwordHash = await bcrypt.hash(password, bcryptRounds);
-    createUser(username, passwordHash, allowedHosts ?? null);
+    createUser(username, passwordHash, allowedHosts ?? null, role ?? 'user');
     res.status(201).json({ ok: true });
   } catch (err) {
     const status = err.message.includes('already exists') ? 409 : 500;
+    res.status(status).json({ error: err.message });
+  }
+});
+
+app.get('/api/users', requireAuth, requireAdmin, (req, res) => {
+  res.json(getAllUsers());
+});
+
+app.put('/api/users/:username', requireAuth, requireAdmin, async (req, res) => {
+  const { username } = req.params;
+  const { username: newUsername, password, role, allowedHosts } = req.body;
+  if (newUsername !== undefined && (!newUsername || typeof newUsername !== 'string' || !newUsername.trim())) {
+    return res.status(400).json({ error: 'Username cannot be empty' });
+  }
+  if (role !== undefined && !['admin', 'user'].includes(role)) {
+    return res.status(400).json({ error: 'Role must be "admin" or "user"' });
+  }
+  if (allowedHosts !== undefined && allowedHosts !== null && !Array.isArray(allowedHosts)) {
+    return res.status(400).json({ error: 'allowedHosts must be an array or null' });
+  }
+  try {
+    const { bcryptRounds } = require('./config');
+    const updates = {};
+    if (newUsername !== undefined) updates.newUsername = newUsername;
+    if (password) updates.passwordHash = await bcrypt.hash(password, bcryptRounds);
+    if (role !== undefined) updates.role = role;
+    if (allowedHosts !== undefined) updates.allowedHosts = allowedHosts;
+    updateUser(username, updates);
+    res.json({ ok: true });
+  } catch (err) {
+    const status = err.message.includes('not found') ? 404 : err.message.includes('already exists') ? 409 : 500;
+    res.status(status).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:username', requireAuth, requireAdmin, (req, res) => {
+  const { username } = req.params;
+  if (username === req.user.username) {
+    return res.status(400).json({ error: 'Cannot delete your own account' });
+  }
+  try {
+    deleteUser(username);
+    res.json({ ok: true });
+  } catch (err) {
+    const status = err.message.includes('not found') ? 404 : 500;
     res.status(status).json({ error: err.message });
   }
 });
