@@ -168,6 +168,95 @@ app.get('/api/data', requireAuth, async (req, res) => {
   }
 });
 
+// Export the requesting user's approved meets as an iCalendar (.ics) file.
+// Green-dominant bgColor = approved. allowedHosts from the JWT is enforced server-side
+// so a user cannot export meets they cannot see in the UI.
+app.get('/api/export.ics', requireAuth, async (req, res) => {
+  if (!webAppUrl || !apiKey) {
+    return res.status(500).json({ error: 'Server not configured' });
+  }
+  try {
+    const response = await fetch(`${webAppUrl}?key=${apiKey}`);
+    if (!response.ok) throw new Error(`Upstream error: ${response.status}`);
+    const data = await response.json();
+
+    const { overrides } = readLocalMeets();
+    const mergedData = data.map(item => {
+      const row = typeof item.sheetRow === 'number' ? item.sheetRow : null;
+      if (row !== null && overrides[String(row)]) {
+        return { ...item, ...overrides[String(row)] };
+      }
+      return item;
+    });
+
+    const { allowedHosts } = req.user;
+    const scopedData = (allowedHosts && allowedHosts.length)
+      ? mergedData.filter(item => allowedHosts.includes(item.Organisatie))
+      : mergedData;
+
+    function bgColorToStatus(bgColor) {
+      if (!bgColor || bgColor === '#ffffff' || bgColor === 'white') return 'pending';
+      const hex = bgColor.replace('#', '');
+      if (hex.length !== 6) return 'pending';
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      if (g > r && g > b) return 'approved';
+      if (r > g && r > b) return 'rejected';
+      return 'pending';
+    }
+
+    function parseTimestamp(raw) {
+      if (!raw) return null;
+      if (typeof raw === 'number') { const d = new Date(raw); return isNaN(d) ? null : d; }
+      const s = String(raw).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const d = new Date(s); d.setSeconds(0, 0); return isNaN(d) ? null : d; }
+      const swapped = s.replace(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/, (_, d, m, y) => `${m}/${d}/${y}`);
+      const d2 = new Date(swapped);
+      return isNaN(d2) ? null : d2;
+    }
+
+    const ical = require('ical-generator');
+    const calendar = ical.default({
+      name: 'Classroom Visits',
+      prodId: { company: 'Lesbezoeken', product: 'Classroom Visit Schedule', language: 'EN' },
+    });
+
+    for (const item of scopedData) {
+      if (bgColorToStatus(item.bgColor) !== 'approved') continue;
+      const start = parseTimestamp(item.Timestamp);
+      if (!start) continue;
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const uid = typeof item.sheetRow === 'number'
+        ? `${item.sheetRow}@lesbezoeken`
+        : `${start.getTime()}-${Math.random().toString(36).slice(2)}@lesbezoeken`;
+      calendar.createEvent({
+        uid,
+        start,
+        end,
+        summary: item.Organisatie || 'Classroom Visit',
+        description: [
+          `Organisation: ${item.Organisatie || '—'}`,
+          `Class: ${item.Klas || '—'}`,
+          `Professor: ${item.Lesgever || '—'}`,
+          `Status: Approved`,
+        ].join('\n'),
+        status: 'CONFIRMED',
+      });
+    }
+
+    res.set({
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="classroom-visits.ics"',
+      'Cache-Control': 'no-store',
+    });
+    res.send(calendar.toString());
+  } catch (err) {
+    console.error('ICS export error:', err.message);
+    res.status(502).json({ error: 'Failed to generate calendar export' });
+  }
+});
+
 // Approve or reject a pending meet by updating its row color in the Google Sheet.
 // Colors: faint green (#d9ead3) for approved, faint red (#f4cccc) for rejected.
 app.post('/api/approve', requireAuth, requireAdmin, async (req, res) => {

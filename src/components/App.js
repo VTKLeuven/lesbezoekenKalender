@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Calendar, ClipboardList, X, Check, Filter, Users, LogOut, GraduationCap, User, CalendarPlus, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ClipboardList, X, Check, Filter, Users, LogOut, GraduationCap, User, CalendarPlus, Pencil, Download, HelpCircle } from "lucide-react";
 import { colorClasses } from "../utils/colorClasses.js";
 import { UseCheckForUpdates } from "../utils/hooks.js";
 import { getWeekStartMonday, fulfillsFilter } from "../utils/helper.js";
@@ -151,6 +151,7 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
   const [showRejected, setShowRejected] = useState(false);
   const [approvalTarget, setApprovalTarget] = useState(null);
   const [approvalLoading, setApprovalLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [expandedEvent, setExpandedEvent] = useState(null);
   const [showAddMeet, setShowAddMeet] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -261,6 +262,27 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
     }
     return result;
   }, [events, user, isAdmin, approvalMode, showRejected]);
+
+  const handleExportIcs = useCallback(async () => {
+    setExportLoading(true);
+    try {
+      const res = await fetch('/api/export.ics', { headers: getAuthHeader() });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'classroom-visits.ics';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('ICS export failed:', err);
+    } finally {
+      setExportLoading(false);
+    }
+  }, []);
 
   const filteredEvents = useMemo(() => {
     if (!filter.field) return baseEvents;
@@ -633,6 +655,30 @@ const App = ({ initialEvents = [], organisationCM = Map() }) => {
                       Show rejected
                     </label>
                   </>
+                )}
+                {activeTab === 'calendar' && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={handleExportIcs} disabled={exportLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/80 hover:text-white transition-all disabled:opacity-50"
+                      style={{ background: 'rgba(255,255,255,0.15)' }}>
+                      <Download className="w-3.5 h-3.5" />
+                      {exportLoading ? 'Exporting…' : 'Export'}
+                    </button>
+                    <div className="relative group">
+                      <HelpCircle className="w-3.5 h-3.5 text-white/50 hover:text-white/90 cursor-pointer transition-colors" />
+                      <div className="absolute right-0 top-6 z-50 hidden group-hover:block w-64 rounded-lg shadow-lg text-xs text-gray-800 bg-white p-3 leading-relaxed">
+                        <p className="font-semibold mb-1.5">How to import into Google Calendar</p>
+                        <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                          <li>Click <span className="font-medium text-gray-800">Export</span> to download the <code className="bg-gray-100 px-0.5 rounded">.ics</code> file</li>
+                          <li>Open <span className="font-medium text-gray-800">calendar.google.com</span></li>
+                          <li>Click the gear icon → <span className="font-medium text-gray-800">Settings</span></li>
+                          <li>Select <span className="font-medium text-gray-800">Import &amp; export</span> in the sidebar</li>
+                          <li>Click <span className="font-medium text-gray-800">Select file</span> and choose the downloaded file</li>
+                          <li>Click <span className="font-medium text-gray-800">Import</span></li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 <button onClick={logout}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/80 hover:text-white transition-all"
